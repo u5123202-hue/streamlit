@@ -144,18 +144,66 @@ def load_past_data():
         # 보증금과 월세가 모두 0인 매매/결측치 데이터 제거
         pdf = pdf[~((pdf['보증금_만'] == 0) & (pdf['월세_만'] == 0))]
 
+        # 가격대 그룹화(버키팅) 로직 추가
         def format_price(r):
-            if r['월세_만'] == 0:
-                return f"전세 {int(r['보증금_만'])}만"
+            dep = r['보증금_만']
+            rent = r['월세_만']
+
+            if rent == 0:
+                if dep < 10000:
+                    return "전세 1억 미만"
+                elif dep < 20000:
+                    return "전세 1억~2억"
+                else:
+                    return "전세 2억 이상"
             else:
-                if r['보증금_만'] == 0:
-                    return f"무보증 / 월세 {int(r['월세_만'])}만"
-                return f"보증금 {int(r['보증금_만'])}만 / 월세 {int(r['월세_만'])}만"
+                if dep == 0:
+                    dep_g = "무보증"
+                elif dep <= 300:
+                    dep_g = "보증금 300만 이하"
+                elif dep <= 500:
+                    dep_g = "보증금 500만대"
+                elif dep <= 1000:
+                    dep_g = "보증금 1000만대"
+                else:
+                    dep_g = "보증금 2000만 이상"
+
+                if rent < 30:
+                    rent_g = "월세 30만 미만"
+                elif rent < 40:
+                    rent_g = "월세 30만대"
+                elif rent < 50:
+                    rent_g = "월세 40만대"
+                elif rent < 60:
+                    rent_g = "월세 50만대"
+                elif rent < 80:
+                    rent_g = "월세 60~70만대"
+                else:
+                    rent_g = "월세 80만 이상"
+
+                return f"{dep_g} / {rent_g}"
 
         pdf['가격대'] = pdf.apply(format_price, axis=1)
 
         pdf['평수'] = pd.to_numeric(pdf['XUAR'], errors='coerce') / 3.3058
-        pdf['평수_그룹'] = pdf['평수'].apply(lambda x: f"{int(x)}평대" if pd.notna(x) else "알수없음")
+
+        # 평수 그룹화(버키팅) 로직 추가
+        def format_size(x):
+            if pd.isna(x): return "알수없음"
+            if x < 5:
+                return "5평 미만"
+            elif x < 10:
+                return "5~10평"
+            elif x < 15:
+                return "10~15평"
+            elif x < 20:
+                return "15~20평"
+            elif x < 30:
+                return "20~30평"
+            else:
+                return "30평 이상"
+
+        pdf['평수_그룹'] = pdf['평수'].apply(format_size)
 
         # 주택 유형 구분 추가
         if 'HOUSE_TYPE' in pdf.columns:
@@ -761,7 +809,8 @@ clusterer.addMarkers(markers);
                     loser_row = row_a
 
                 diff = abs(cost_a["총비용"] - cost_b["총비용"])
-                diff_rate = diff / max(cost_a["총비용"], cost_b["총비용"]) * 100 if max(cost_a["총비용"], cost_b["총비용"]) > 0 else 0
+                diff_rate = diff / max(cost_a["총비용"], cost_b["총비용"]) * 100 if max(cost_a["총비용"],
+                                                                                  cost_b["총비용"]) > 0 else 0
 
                 st.markdown("""<div style="background-color:#F8F9FA; border:2px solid #1E90FF; border-radius:16px; padding:22px; margin-top:15px; margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.08);">
 <h3 style="margin-top:0; color:#1E90FF;">1vs1 경제성 비교 결과</h3>
@@ -881,30 +930,72 @@ elif st.session_state.current_page == "trend":
     if past_df.empty:
         st.warning("과거 매물 데이터를 불러올 수 없습니다. '연수구 과거 매물.csv' 파일이 존재하는지 확인해주세요.")
     else:
-        col1, col2 = st.columns(2)
+        st.markdown("### 핵심 트렌드 요약")
+        m1, m2, m3, m4 = st.columns(4)
 
-        with col1:
-            st.markdown("### 가장 인기 있는 지역 (동)")
-            area_counts = past_df['동이름'].value_counts().head(5)
-            st.bar_chart(area_counts)
+        total_count = len(past_df)
+        top_dong = past_df['동이름'].mode()[0] if not past_df['동이름'].empty else "-"
+        top_price = past_df['가격대'].mode()[0] if not past_df['가격대'].empty else "-"
+        top_size = past_df['평수_그룹'].mode()[0] if not past_df['평수_그룹'].empty else "-"
 
-            st.markdown("### 가장 인기 있는 주택 유형")
-            house_counts = past_df['주택유형'].value_counts().head(5)
-            st.bar_chart(house_counts)
 
-            st.markdown("### 선호하는 층수")
-            floor_counts = past_df['층수_그룹'].value_counts()
-            st.bar_chart(floor_counts)
+        def metric_card(title, value):
+            return f"""<div style="background-color: #F8F9FA; border-left: 4px solid #1E90FF; padding: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px;">
+<div style="color: #666; font-size: 13px; margin-bottom: 5px;">{title}</div>
+<div style="color: #333; font-size: 20px; font-weight: bold;">{value}</div>
+</div>"""
 
-        with col2:
-            st.markdown("### 가장 인기 있는 역 주변")
-            station_counts = past_df['NRB_SWST_NM'].dropna().value_counts().head(5)
-            st.bar_chart(station_counts)
 
-            st.markdown("### 인기 보증금 및 월세 구간")
-            price_counts = past_df['가격대'].value_counts().head(5)
-            st.bar_chart(price_counts)
+        m1.markdown(metric_card("분석 데이터 수", f"{total_count}건"), unsafe_allow_html=True)
+        m2.markdown(metric_card("가장 인기있는 지역", top_dong), unsafe_allow_html=True)
+        m3.markdown(metric_card("가장 인기있는 가격대", top_price), unsafe_allow_html=True)
+        m4.markdown(metric_card("가장 많이 찾는 평수", top_size), unsafe_allow_html=True)
 
-            st.markdown("### 가장 인기 있는 평수")
-            size_counts = past_df['평수_그룹'].value_counts().head(5)
-            st.bar_chart(size_counts)
+        st.divider()
+
+        tab1, tab2, tab3 = st.tabs(["지역 및 입지 분석", "가격 및 면적 분석", "주거 형태 분석"])
+
+        with tab1:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("<h4 style='color: #1E90FF;'>가장 인기 있는 지역 (동)</h4>", unsafe_allow_html=True)
+                area_counts = past_df['동이름'].value_counts().head(5)
+                st.bar_chart(area_counts)
+                st.info(f"분석 결과, '{top_dong}'의 거래량이 가장 활발합니다. 인프라 및 통학 편의성이 높은 지역으로 추정됩니다.")
+
+            with col2:
+                st.markdown("<h4 style='color: #1E90FF;'>가장 인기 있는 역 주변</h4>", unsafe_allow_html=True)
+                station_counts = past_df['NRB_SWST_NM'].dropna().value_counts().head(5)
+                st.bar_chart(station_counts)
+                top_station = station_counts.index[0] if len(station_counts) > 0 else "-"
+                st.info(f"지하철역 기준으로는 '{top_station}' 인근의 수요가 가장 높게 나타났습니다.")
+
+        with tab2:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("<h4 style='color: #1E90FF;'>인기 보증금 및 월세 구간</h4>", unsafe_allow_html=True)
+                price_counts = past_df['가격대'].value_counts().head(5)
+                st.bar_chart(price_counts)
+                st.info(f"'{top_price}' 구간의 계약이 지배적입니다.")
+
+            with col2:
+                st.markdown("<h4 style='color: #1E90FF;'>가장 인기 있는 평수</h4>", unsafe_allow_html=True)
+                size_counts = past_df['평수_그룹'].value_counts().head(5)
+                st.bar_chart(size_counts)
+                st.info(f"1인 가구 거주에 적합한 '{top_size}' 매물이 시장에서 가장 빠르게 거래되고 있습니다.")
+
+        with tab3:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("<h4 style='color: #1E90FF;'>가장 인기 있는 주택 유형</h4>", unsafe_allow_html=True)
+                house_counts = past_df['주택유형'].value_counts().head(5)
+                st.bar_chart(house_counts)
+                top_house = house_counts.index[0] if len(house_counts) > 0 else "-"
+                st.info(f"건축물 대장 기준 '{top_house}' 형태의 주거 공간이 가장 많이 거래되었습니다.")
+
+            with col2:
+                st.markdown("<h4 style='color: #1E90FF;'>선호하는 층수</h4>", unsafe_allow_html=True)
+                floor_counts = past_df['층수_그룹'].value_counts()
+                st.bar_chart(floor_counts)
+                top_floor = floor_counts.index[0] if len(floor_counts) > 0 else "-"
+                st.info(f"층수 선호도는 '{top_floor}'에 집중되어 있으며, 이는 가격과 편의성의 타협점입니다.")
