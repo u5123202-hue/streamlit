@@ -378,7 +378,6 @@ if st.session_state.current_page == "main":
        매물 종류 multiselect 파란색 테마
     ================================ */
 
-    /* 선택된 태그 */
     span[data-baseweb="tag"] {
         background-color: #1E90FF !important;
         color: white !important;
@@ -387,94 +386,126 @@ if st.session_state.current_page == "main":
         font-weight: 600 !important;
     }
 
-    /* 태그 안 X 아이콘 */
     span[data-baseweb="tag"] svg {
         fill: white !important;
     }
 
-    /* multiselect 박스 테두리 */
     .stMultiSelect [data-baseweb="select"] {
         border-radius: 10px !important;
         border-color: rgba(30, 144, 255, 0.35) !important;
     }
 
-    /* multiselect 클릭/포커스 상태 */
     .stMultiSelect [data-baseweb="select"]:focus-within {
         border-color: #1E90FF !important;
         box-shadow: 0 0 0 1px rgba(30, 144, 255, 0.35) !important;
     }
 
-    /* 드롭다운 옵션 hover */
     li[role="option"]:hover {
         background-color: #EAF4FF !important;
         color: #003366 !important;
     }
 
-    /* 선택된 드롭다운 옵션 */
     li[aria-selected="true"] {
         background-color: #D6EBFF !important;
         color: #003366 !important;
         font-weight: 600 !important;
     }
 
-    /* 선택 체크 아이콘 */
     li[aria-selected="true"] svg {
         fill: #1E90FF !important;
     }
 
     /* ================================
-       항목별 중요도 설정 슬라이더 파란색 테마
+       항목별 중요도 설정 카드
     ================================ */
 
-    /* 슬라이더 트랙 전체 */
-    .stSlider div[data-baseweb="slider"] > div {
-        background-color: #D6EBFF !important;
+    .weight-card {
+        background-color: #F8F9FA;
+        border: 1px solid #E1E4E8;
+        border-radius: 18px;
+        padding: 32px 26px;
+        margin-bottom: 22px;
     }
 
-    /* 슬라이더 선택된 진행 바 */
+    .weight-card h2 {
+        font-size: 34px;
+        font-weight: 900;
+        line-height: 1.15;
+        color: #2F3440;
+        margin: 0 0 38px 0;
+        letter-spacing: -1px;
+    }
+
+    .weight-card p {
+        font-size: 17px;
+        color: #666;
+        line-height: 1.7;
+        margin: 0;
+    }
+
+    /* ================================
+       슬라이더 파란색 테마
+    ================================ */
+
+    .stSlider {
+        padding-top: 8px !important;
+        padding-bottom: 26px !important;
+    }
+
+    .stSlider label {
+        font-size: 20px !important;
+        color: #303744 !important;
+        font-weight: 500 !important;
+        margin-bottom: 12px !important;
+    }
+
+    .stSlider div[data-baseweb="slider"] > div {
+        background-color: #E1E5EC !important;
+        height: 5px !important;
+    }
+
     .stSlider div[data-baseweb="slider"] div[role="presentation"] {
         background-color: #1E90FF !important;
+        height: 5px !important;
     }
 
-    /* 슬라이더 동그란 핸들 */
     .stSlider [role="slider"] {
         background-color: #1E90FF !important;
         border: 2px solid #1E90FF !important;
-        box-shadow: 0 0 0 2px rgba(30, 144, 255, 0.15) !important;
+        width: 18px !important;
+        height: 18px !important;
+        box-shadow: none !important;
     }
 
-    /* 슬라이더 hover 효과 */
     .stSlider [role="slider"]:hover {
-        box-shadow: 0 0 0 8px rgba(30, 144, 255, 0.2) !important;
+        box-shadow: 0 0 0 8px rgba(30, 144, 255, 0.18) !important;
     }
 
-    /* 슬라이더 값 텍스트 */
-    .stSlider [data-testid="stTickBar"] {
+    .stSlider [data-testid="stThumbValue"] {
         color: #1E90FF !important;
+        font-size: 18px !important;
+        font-weight: 500 !important;
+        top: -32px !important;
     }
 
     /* ================================
        체크박스 / 버튼 파란색 보조 테마
     ================================ */
 
-    /* 체크박스 선택 색상 */
     .stCheckbox input:checked + div {
         background-color: #1E90FF !important;
         border-color: #1E90FF !important;
     }
 
-    /* 버튼 모서리 */
     .stButton > button {
         border-radius: 10px !important;
     }
 
-    /* 버튼 hover */
     .stButton > button:hover {
         border-color: #1E90FF !important;
         color: #1E90FF !important;
     }
 
-    /* 저장된 필터 삭제 버튼 */
     button[kind="tertiary"] {
         text-decoration: underline !important;
         font-size: 13px !important;
@@ -485,12 +516,10 @@ if st.session_state.current_page == "main":
         box-shadow: none !important;
     }
 
-    /* 저장된 필터 삭제 버튼 hover */
     button[kind="tertiary"]:hover {
         color: #1E90FF !important;
     }
 
-    /* expander hover */
     .streamlit-expanderHeader:hover {
         color: #1E90FF !important;
     }
@@ -778,10 +807,12 @@ clusterer.addMarkers(markers);
                 st.rerun()
 
         with weight_col:
-            st.markdown("""<div style="background-color:#F8F9FA; border:1px solid #E6E6E6; border-radius:12px; padding:16px; margin-bottom:10px;">
-<h4 style="margin-top:0; margin-bottom:8px;">항목별 중요도 설정</h4>
-<p style="font-size:13px; color:#666; margin-bottom:0;">각 항목이 추천 점수에 미치는 영향력을 조절하세요.</p>
-</div>""", unsafe_allow_html=True)
+            st.markdown("""
+<div class="weight-card">
+    <h2>항목별 중요도 설정</h2>
+    <p>각 항목이 추천 점수에 미치는 영향력을 조절하세요.</p>
+</div>
+""", unsafe_allow_html=True)
 
             st.slider("가격 중요도", 1, 5, key="w_price")
             st.slider("시설 중요도", 1, 5, key="w_option")
