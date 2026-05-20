@@ -369,7 +369,148 @@ logo_base64 = get_image_base64(LOGO_FILE_PATH)
 if st.session_state.current_page == "main":
 
     # --- 3. 사이드바 ---
-    st.sidebar.header("검색 필터")
+    # --- 3. 사이드바 ---
+st.sidebar.header("검색 필터")
+
+# =========================================
+# ROOMINU 블루 테마 UI 커스텀
+# =========================================
+st.markdown("""
+<style>
+
+/* ========================================
+   매물 종류 Multiselect 파란색 테마
+======================================== */
+
+/* 선택된 태그 */
+span[data-baseweb="tag"] {
+    background-color: #1E90FF !important;
+    color: white !important;
+    border-radius: 8px !important;
+    padding: 4px 8px !important;
+    font-weight: 600 !important;
+    border: none !important;
+}
+
+/* 태그 안 X 버튼 */
+span[data-baseweb="tag"] svg {
+    fill: white !important;
+}
+
+/* multiselect 전체 박스 */
+.stMultiSelect [data-baseweb="select"] {
+    border-radius: 10px !important;
+    border: 2px solid rgba(30,144,255,0.15) !important;
+    transition: all 0.2s ease !important;
+}
+
+/* 클릭했을 때 */
+.stMultiSelect [data-baseweb="select"]:focus-within {
+    border: 2px solid #1E90FF !important;
+    box-shadow: 0 0 0 1px #1E90FF33 !important;
+}
+
+/* dropdown hover */
+li[role="option"]:hover {
+    background-color: #EAF4FF !important;
+    color: #003366 !important;
+}
+
+/* 선택된 dropdown 항목 */
+li[aria-selected="true"] {
+    background-color: #D6EBFF !important;
+    color: #003366 !important;
+    font-weight: 600 !important;
+}
+
+/* 체크 아이콘 */
+li[aria-selected="true"] svg {
+    fill: #1E90FF !important;
+}
+
+/* ========================================
+   슬라이더 파란색 테마
+======================================== */
+
+/* 슬라이더 전체 배경 */
+.stSlider div[data-baseweb="slider"] > div {
+    background-color: #D6EBFF !important;
+}
+
+/* 선택된 진행 바 */
+.stSlider div[data-baseweb="slider"] div[role="presentation"] {
+    background-color: #1E90FF !important;
+}
+
+/* 슬라이더 동그라미 */
+.stSlider [role="slider"] {
+    background-color: #1E90FF !important;
+    border: 2px solid #1E90FF !important;
+}
+
+/* hover 효과 */
+.stSlider [role="slider"]:hover {
+    box-shadow: 0 0 0 8px rgba(30,144,255,0.2) !important;
+}
+
+/* ========================================
+   체크박스
+======================================== */
+
+.stCheckbox input:checked + div {
+    background-color: #1E90FF !important;
+    border-color: #1E90FF !important;
+}
+
+/* ========================================
+   버튼
+======================================== */
+
+.stButton > button {
+    border-radius: 10px !important;
+}
+
+/* primary 버튼 */
+.stButton > button[kind="primary"] {
+    background-color: #1E90FF !important;
+    color: white !important;
+    border: none !important;
+}
+
+/* hover */
+.stButton > button:hover {
+    border-color: #1E90FF !important;
+    color: #1E90FF !important;
+}
+
+/* tertiary 버튼 */
+button[kind="tertiary"] {
+    text-decoration: underline !important;
+    font-size: 13px !important;
+    color: #888888 !important;
+    padding-top: 5px !important;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+button[kind="tertiary"]:hover {
+    color: #1E90FF !important;
+}
+
+/* expander hover */
+.streamlit-expanderHeader:hover {
+    color: #1E90FF !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+selected_types = st.sidebar.multiselect(
+    "매물 종류",
+    options=df['종류'].dropna().unique(),
+    key="selected_types"
+)
 
     # --- 검색 필터 UI 색상 커스텀: 빨간색 → 파란색 ---
     st.markdown("""
