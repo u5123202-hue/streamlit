@@ -369,7 +369,55 @@ logo_base64 = get_image_base64(LOGO_FILE_PATH)
 if st.session_state.current_page == "main":
 
     # --- 3. 사이드바 ---
-    st.sidebar.header("검색 필터")
+st.sidebar.header("검색 필터")
+
+# --- 검색 필터 색상 커스텀 (파란색 테마) ---
+st.markdown("""
+<style>
+
+/* ================================
+   매물 종류(multiselect) 파란색 테마
+================================ */
+
+/* 선택된 태그 */
+span[data-baseweb="tag"] {
+    background-color: #1E90FF !important;
+    color: white !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+}
+
+/* 태그 안 X 버튼 */
+span[data-baseweb="tag"] svg {
+    fill: white !important;
+}
+
+/* multiselect 테두리 */
+.stMultiSelect [data-baseweb="select"] {
+    border-radius: 10px !important;
+    border: 2px solid #1E90FF22 !important;
+}
+
+/* 클릭 시 테두리 */
+.stMultiSelect [data-baseweb="select"]:focus-within {
+    border: 2px solid #1E90FF !important;
+    box-shadow: 0 0 0 1px #1E90FF !important;
+}
+
+/* 드롭다운 hover */
+li[role="option"]:hover {
+    background-color: #EAF4FF !important;
+}
+
+/* 선택된 항목 */
+li[aria-selected="true"] {
+    background-color: #D6EBFF !important;
+    color: #003366 !important;
+    font-weight: 600 !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
     selected_types = st.sidebar.multiselect(
         "매물 종류",
