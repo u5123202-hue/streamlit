@@ -371,6 +371,164 @@ if st.session_state.current_page == "main":
     # --- 3. 사이드바 ---
     st.sidebar.header("검색 필터")
 
+    # --- ROOMINU UI 색상 커스텀: 파란색 테마 ---
+    st.markdown("""
+    <style>
+    /* ================================
+       매물 종류 multiselect 파란색 테마
+    ================================ */
+    span[data-baseweb="tag"] {
+        background-color: #1E90FF !important;
+        color: white !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 600 !important;
+    }
+
+    span[data-baseweb="tag"] svg {
+        fill: white !important;
+    }
+
+    .stMultiSelect [data-baseweb="select"] {
+        border-radius: 10px !important;
+        border-color: rgba(30, 144, 255, 0.35) !important;
+    }
+
+    .stMultiSelect [data-baseweb="select"]:focus-within {
+        border-color: #1E90FF !important;
+        box-shadow: 0 0 0 1px rgba(30, 144, 255, 0.35) !important;
+    }
+
+    li[role="option"]:hover {
+        background-color: #EAF4FF !important;
+        color: #003366 !important;
+    }
+
+    li[aria-selected="true"] {
+        background-color: #D6EBFF !important;
+        color: #003366 !important;
+        font-weight: 600 !important;
+    }
+
+    li[aria-selected="true"] svg {
+        fill: #1E90FF !important;
+    }
+
+    /* ================================
+       항목별 중요도 설정 카드
+    ================================ */
+    .weight-card {
+        background-color: #F8F9FA;
+        border: 1px solid #E1E4E8;
+        border-radius: 18px;
+        padding: 32px 26px;
+        margin-bottom: 22px;
+    }
+
+    .weight-card h2 {
+        font-size: 34px;
+        font-weight: 900;
+        line-height: 1.15;
+        color: #2F3440;
+        margin: 0 0 38px 0;
+        letter-spacing: -1px;
+    }
+
+    .weight-card p {
+        font-size: 17px;
+        color: #666666;
+        line-height: 1.7;
+        margin: 0;
+    }
+
+    /* ================================
+       모든 Streamlit 슬라이더 파란색 테마
+       - 사이드바 슬라이더
+       - 항목별 중요도 슬라이더
+    ================================ */
+    .stSlider {
+        padding-top: 8px !important;
+        padding-bottom: 26px !important;
+    }
+
+    .stSlider label {
+        font-size: 20px !important;
+        color: #303744 !important;
+        font-weight: 500 !important;
+        margin-bottom: 12px !important;
+    }
+
+    /* 슬라이더 전체 회색 바 */
+    .stSlider div[data-baseweb="slider"] > div {
+        background: #E1E5EC !important;
+        height: 5px !important;
+        border-radius: 999px !important;
+    }
+
+    /* 선택된 파란 바 */
+    .stSlider div[data-baseweb="slider"] div[role="presentation"] {
+        background: #1E90FF !important;
+        height: 5px !important;
+        border-radius: 999px !important;
+    }
+
+    /* 슬라이더 동그라미 */
+    .stSlider [role="slider"] {
+        background-color: #1E90FF !important;
+        border: 2px solid #1E90FF !important;
+        width: 18px !important;
+        height: 18px !important;
+        box-shadow: none !important;
+    }
+
+    .stSlider [role="slider"]:hover,
+    .stSlider [role="slider"]:focus {
+        box-shadow: 0 0 0 8px rgba(30, 144, 255, 0.18) !important;
+    }
+
+    /* 슬라이더 위 숫자 */
+    .stSlider [data-testid="stThumbValue"] {
+        color: #1E90FF !important;
+        font-size: 18px !important;
+        font-weight: 500 !important;
+        top: -32px !important;
+    }
+
+    /* 체크박스 선택 색상 */
+    .stCheckbox input:checked + div {
+        background-color: #1E90FF !important;
+        border-color: #1E90FF !important;
+    }
+
+    .stButton > button {
+        border-radius: 10px !important;
+    }
+
+    .stButton > button:hover {
+        border-color: #1E90FF !important;
+        color: #1E90FF !important;
+    }
+
+    button[kind="tertiary"] {
+        text-decoration: underline !important;
+        font-size: 13px !important;
+        color: #888888 !important;
+        padding-top: 5px !important;
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    button[kind="tertiary"]:hover {
+        color: #1E90FF !important;
+    }
+
+    .streamlit-expanderHeader:hover {
+        color: #1E90FF !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     selected_types = st.sidebar.multiselect(
         "매물 종류",
         options=df['종류'].dropna().unique(),
@@ -458,7 +616,7 @@ button[kind="tertiary"] {
     box-shadow: none !important;
 }
 button[kind="tertiary"]:hover {
-    color: #ff4b4b !important;
+    color: #1E90FF !important;
 }
 </style>""", unsafe_allow_html=True)
 
@@ -652,10 +810,12 @@ clusterer.addMarkers(markers);
                 st.rerun()
 
         with weight_col:
-            st.markdown("""<div style="background-color:#F8F9FA; border:1px solid #E6E6E6; border-radius:12px; padding:16px; margin-bottom:10px;">
-<h4 style="margin-top:0; margin-bottom:8px;">항목별 중요도 설정</h4>
-<p style="font-size:13px; color:#666; margin-bottom:0;">각 항목이 추천 점수에 미치는 영향력을 조절하세요.</p>
-</div>""", unsafe_allow_html=True)
+            st.markdown("""
+<div class="weight-card">
+    <h2>항목별 중요도 설정</h2>
+    <p>각 항목이 추천 점수에 미치는 영향력을 조절하세요.</p>
+</div>
+""", unsafe_allow_html=True)
 
             st.slider("가격 중요도", 1, 5, key="w_price")
             st.slider("시설 중요도", 1, 5, key="w_option")
