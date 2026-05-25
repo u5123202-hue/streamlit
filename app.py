@@ -311,8 +311,13 @@ def apply_preset(slot):
     st.rerun()
 
 
-# --- 경제성 비교 계산 함수 ---
-def calculate_total_cost(row, months=12, commute_days_per_month=20):
+# --- 경제성 비교 계산 함수 (NPV 기반) ---
+def calculate_total_cost(
+        row,
+        months=12,
+        commute_days_per_month=20,
+        annual_rate=0.03
+):
     deposit = row.get('보증금', 0)
     monthly_rent = row.get('월세', 0)
     maintenance = row.get('관리비', 0)
@@ -327,21 +332,39 @@ def calculate_total_cost(row, months=12, commute_days_per_month=20):
     if pd.isna(commute_min):
         commute_min = 0
 
-    deposit_opportunity_cost = deposit * (months / 12)
-    rent_total = monthly_rent * months
-    maintenance_total = maintenance * months
+    # 연 할인율을 월 할인율로 변환
+    monthly_rate = (1 + annual_rate) ** (1 / 12) - 1
 
-    commute_hours_total = (commute_min / 60) * commute_days_per_month * months
-    commute_cost = commute_hours_total * 5160
+    # 월 통학시간 비용 계산
+    monthly_commute_hours = (commute_min / 60) * commute_days_per_month
+    monthly_commute_cost = monthly_commute_hours * 5160
 
-    total_cost = deposit_opportunity_cost + rent_total + maintenance_total + commute_cost
+    # 월세, 관리비, 통학시간 비용의 현재가치 계산
+    if monthly_rate > 0:
+        pv_factor = (1 - (1 + monthly_rate) ** (-months)) / monthly_rate
+
+        pv_rent = monthly_rent * pv_factor
+        pv_maintenance = maintenance * pv_factor
+        pv_commute = monthly_commute_cost * pv_factor
+    else:
+        pv_rent = monthly_rent * months
+        pv_maintenance = maintenance * months
+        pv_commute = monthly_commute_cost * months
+
+    # 보증금은 처음에 맡기고, 거주 종료 시점에 돌려받는다고 가정
+    # 현재 시점 보증금 지출액 - 미래 반환액의 현재가치
+    pv_deposit = deposit - (deposit / ((1 + monthly_rate) ** months))
+
+    total_cost = pv_deposit + pv_rent + pv_maintenance + pv_commute
 
     return {
-        "보증금 기회비용": deposit_opportunity_cost,
-        "월세 총액": rent_total,
-        "관리비 총액": maintenance_total,
-        "통학시간 비용": commute_cost,
-        "총비용": total_cost
+        "보증금 현재가치": pv_deposit,
+        "월세 현재가치": pv_rent,
+        "관리비 현재가치": pv_maintenance,
+        "통학시간 현재가치": pv_commute,
+        "총 현재가치 비용(NPV)": total_cost,
+        "연 할인율": annual_rate,
+        "월 할인율": monthly_rate
     }
 
 
@@ -725,13 +748,24 @@ clusterer.addMarkers(markers);
                 st.rerun()
 
         with st.expander("비교 조건 설정", expanded=False):
-            col_a, col_b = st.columns(2)
+            col_a, col_b, col_c = st.columns(3)
 
             with col_a:
                 compare_months = st.number_input("희망 거주기간(개월)", min_value=1, max_value=60, value=12)
 
             with col_b:
                 commute_days = st.number_input("월 통학일수", min_value=1, max_value=31, value=20)
+
+            with col_c:
+                annual_discount_rate_percent = st.number_input(
+                    "연 할인율(%)",
+                    min_value=0.0,
+                    max_value=20.0,
+                    value=3.0,
+                    step=0.1
+                )
+
+            annual_discount_rate = annual_discount_rate_percent / 100
 
         display_cols = [
             '선택', '최종점수', '주소', '종류', '평수', '보증금', '월세', '관리비',
@@ -793,16 +827,21 @@ clusterer.addMarkers(markers);
             cost_a = calculate_total_cost(
                 row_a,
                 months=compare_months,
-                commute_days_per_month=commute_days
+                commute_days_per_month=commute_days,
+                annual_rate=annual_discount_rate
             )
 
             cost_b = calculate_total_cost(
                 row_b,
                 months=compare_months,
-                commute_days_per_month=commute_days
+                commute_days_per_month=commute_days,
+                annual_rate=annual_discount_rate
             )
 
-            if cost_a["총비용"] < cost_b["총비용"]:
+            total_a = cost_a["총 현재가치 비용(NPV)"]
+            total_b = cost_b["총 현재가치 비용(NPV)"]
+
+            if total_a < total_b:
                 winner = "A"
                 loser = "B"
                 winner_row = row_a
@@ -813,26 +852,31 @@ clusterer.addMarkers(markers);
                 winner_row = row_b
                 loser_row = row_a
 
-            diff = abs(cost_a["총비용"] - cost_b["총비용"])
-            diff_rate = diff / max(cost_a["총비용"], cost_b["총비용"]) * 100 if max(cost_a["총비용"], cost_b["총비용"]) > 0 else 0
+            diff = abs(total_a - total_b)
+            diff_rate = diff / max(total_a, total_b) * 100 if max(total_a, total_b) > 0 else 0
 
-            st.markdown("""<div style="background-color:#F8F9FA; border:2px solid #1E90FF; border-radius:16px; padding:22px; margin-top:15px; margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.08);">
+            st.markdown(f"""<div style="background-color:#F8F9FA; border:2px solid #1E90FF; border-radius:16px; padding:22px; margin-top:15px; margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.08);">
 <h3 style="margin-top:0; color:#1E90FF;">1vs1 경제성 비교 결과</h3>
-<p style="color:#555; margin-bottom:0;">보증금 기회비용, 월세, 관리비, 통학시간 비용을 모두 반영한 실질 총비용 비교입니다.</p>
+<p style="color:#555; margin-bottom:0;">
+NPV(순현재가치) 기반으로 보증금, 월세, 관리비, 통학시간 비용을 현재가치로 환산한 실질 총비용 비교입니다.<br>
+적용 연 할인율: <b>{annual_discount_rate_percent:.1f}%</b> /
+월 할인율: <b>{cost_a["월 할인율"] * 100:.4f}%</b>
+</p>
 </div>""", unsafe_allow_html=True)
 
             summary_col1, summary_col2, summary_col3 = st.columns(3)
             with summary_col1:
-                st.metric("매물 A 총비용", format_won(cost_a["총비용"]))
+                st.metric("매물 A NPV 비용", format_won(total_a))
             with summary_col2:
-                st.metric("매물 B 총비용", format_won(cost_b["총비용"]))
+                st.metric("매물 B NPV 비용", format_won(total_b))
             with summary_col3:
-                st.metric("총비용 차이", format_won(diff), f"{diff_rate:.1f}%")
+                st.metric("NPV 비용 차이", format_won(diff), f"{diff_rate:.1f}%")
 
             result_compare = pd.DataFrame({
                 "항목": [
                     "주소", "평수", "보증금", "월세", "관리비", "통학시간",
-                    "보증금 기회비용", "월세 총액", "관리비 총액", "통학시간 비용", "총비용"
+                    "보증금 현재가치", "월세 현재가치", "관리비 현재가치",
+                    "통학시간 현재가치", "총 현재가치 비용(NPV)"
                 ],
                 "매물 A": [
                     row_a["주소"],
@@ -841,11 +885,11 @@ clusterer.addMarkers(markers);
                     format_won(row_a["월세"]),
                     format_won(row_a["관리비"]),
                     f"{int(row_a['총_시간(분)'])}분" if pd.notna(row_a["총_시간(분)"]) else "-",
-                    format_won(cost_a["보증금 기회비용"]),
-                    format_won(cost_a["월세 총액"]),
-                    format_won(cost_a["관리비 총액"]),
-                    format_won(cost_a["통학시간 비용"]),
-                    format_won(cost_a["총비용"])
+                    format_won(cost_a["보증금 현재가치"]),
+                    format_won(cost_a["월세 현재가치"]),
+                    format_won(cost_a["관리비 현재가치"]),
+                    format_won(cost_a["통학시간 현재가치"]),
+                    format_won(cost_a["총 현재가치 비용(NPV)"])
                 ],
                 "매물 B": [
                     row_b["주소"],
@@ -854,11 +898,11 @@ clusterer.addMarkers(markers);
                     format_won(row_b["월세"]),
                     format_won(row_b["관리비"]),
                     f"{int(row_b['총_시간(분)'])}분" if pd.notna(row_b["총_시간(분)"]) else "-",
-                    format_won(cost_b["보증금 기회비용"]),
-                    format_won(cost_b["월세 총액"]),
-                    format_won(cost_b["관리비 총액"]),
-                    format_won(cost_b["통학시간 비용"]),
-                    format_won(cost_b["총비용"])
+                    format_won(cost_b["보증금 현재가치"]),
+                    format_won(cost_b["월세 현재가치"]),
+                    format_won(cost_b["관리비 현재가치"]),
+                    format_won(cost_b["통학시간 현재가치"]),
+                    format_won(cost_b["총 현재가치 비용(NPV)"])
                 ]
             })
 
@@ -866,12 +910,12 @@ clusterer.addMarkers(markers);
 
             st.success(
                 f"추천 결과: 매물 {winner}가 더 경제적입니다. "
-                f"매물 {loser}보다 실질 총비용이 약 {format_won(diff)} 낮고, "
+                f"매물 {loser}보다 NPV 기반 실질 총비용이 약 {format_won(diff)} 낮고, "
                 f"비율로는 약 {diff_rate:.1f}% 차이입니다."
             )
 
             st.info(
-                f"해석: '{winner_row['주소']}' 매물은 월세, 보증금 기회비용, 관리비, 통학시간 비용을 모두 합산했을 때 "
+                f"해석: '{winner_row['주소']}' 매물은 월세, 보증금, 관리비, 통학시간 비용의 현재가치를 모두 반영했을 때 "
                 f"'{loser_row['주소']}' 매물보다 경제성이 더 높습니다."
             )
 
