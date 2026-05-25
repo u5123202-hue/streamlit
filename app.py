@@ -70,11 +70,11 @@ def load_data():
         if len(existing_option_cols) > 0:
             df['시설점수'] = df.apply(
                 lambda row: (
-                                    sum(
-                                        1 for col in existing_option_cols
-                                        if str(row.get(col)).strip().upper() in ['O', 'ㅇ', '1', '1.0']
-                                    ) / len(existing_option_cols)
-                            ) * 10,
+                        sum(
+                            1 for col in existing_option_cols
+                            if str(row.get(col)).strip().upper() in ['O', 'ㅇ', '1', '1.0']
+                        ) / len(existing_option_cols)
+                ) * 10,
                 axis=1
             )
         else:
@@ -129,11 +129,14 @@ def load_past_data():
             pdf = pd.read_csv('연수구 과거 매물.csv', encoding='utf-8')
 
         def extract_dong(addr):
-            if pd.isna(addr): return "기타"
+            if pd.isna(addr):
+                return "기타"
             for dong in ["송도동", "동춘동", "연수동", "청학동", "옥련동", "선학동"]:
-                if dong in str(addr): return dong
+                if dong in str(addr):
+                    return dong
             parts = str(addr).split()
-            if len(parts) >= 3: return parts[2]
+            if len(parts) >= 3:
+                return parts[2]
             return "기타"
 
         pdf['동이름'] = pdf['ADRES_NM'].apply(extract_dong)
@@ -186,7 +189,8 @@ def load_past_data():
         pdf['평수'] = pd.to_numeric(pdf['XUAR'], errors='coerce') / 3.3058
 
         def format_size(x):
-            if pd.isna(x): return "알수없음"
+            if pd.isna(x):
+                return "알수없음"
             if x < 5:
                 return "5평 미만"
             elif x < 10:
@@ -311,7 +315,7 @@ def apply_preset(slot):
     st.rerun()
 
 
-# --- 경제성 비교 계산 함수 (NPV 기반) ---
+# --- 경제성 비교 계산 함수 (NPV + EAC 기반) ---
 def calculate_total_cost(
         row,
         months=12,
@@ -346,23 +350,34 @@ def calculate_total_cost(
         pv_rent = monthly_rent * pv_factor
         pv_maintenance = maintenance * pv_factor
         pv_commute = monthly_commute_cost * pv_factor
+
+        # NPV를 등가월비용(EAC)으로 환산하는 자본회수계수
+        eac_factor = (monthly_rate * (1 + monthly_rate) ** months) / (
+                (1 + monthly_rate) ** months - 1
+        )
     else:
         pv_rent = monthly_rent * months
         pv_maintenance = maintenance * months
         pv_commute = monthly_commute_cost * months
+        eac_factor = 1 / months
 
     # 보증금은 처음에 맡기고, 거주 종료 시점에 돌려받는다고 가정
     # 현재 시점 보증금 지출액 - 미래 반환액의 현재가치
     pv_deposit = deposit - (deposit / ((1 + monthly_rate) ** months))
 
-    total_cost = pv_deposit + pv_rent + pv_maintenance + pv_commute
+    total_npv_cost = pv_deposit + pv_rent + pv_maintenance + pv_commute
+
+    # 등가월비용: 총 현재가치 비용을 매월 동일하게 부담하는 금액으로 환산
+    eac_monthly_cost = total_npv_cost * eac_factor
 
     return {
         "보증금 현재가치": pv_deposit,
         "월세 현재가치": pv_rent,
         "관리비 현재가치": pv_maintenance,
         "통학시간 현재가치": pv_commute,
-        "총 현재가치 비용(NPV)": total_cost,
+        "총 현재가치 비용(NPV)": total_npv_cost,
+        "등가월비용(EAC)": eac_monthly_cost,
+        "월 통학시간 비용": monthly_commute_cost,
         "연 할인율": annual_rate,
         "월 할인율": monthly_rate
     }
@@ -838,10 +853,12 @@ clusterer.addMarkers(markers);
                 annual_rate=annual_discount_rate
             )
 
-            total_a = cost_a["총 현재가치 비용(NPV)"]
-            total_b = cost_b["총 현재가치 비용(NPV)"]
+            eac_a = cost_a["등가월비용(EAC)"]
+            eac_b = cost_b["등가월비용(EAC)"]
+            npv_a = cost_a["총 현재가치 비용(NPV)"]
+            npv_b = cost_b["총 현재가치 비용(NPV)"]
 
-            if total_a < total_b:
+            if eac_a < eac_b:
                 winner = "A"
                 loser = "B"
                 winner_row = row_a
@@ -852,13 +869,14 @@ clusterer.addMarkers(markers);
                 winner_row = row_b
                 loser_row = row_a
 
-            diff = abs(total_a - total_b)
-            diff_rate = diff / max(total_a, total_b) * 100 if max(total_a, total_b) > 0 else 0
+            diff_eac = abs(eac_a - eac_b)
+            diff_npv = abs(npv_a - npv_b)
+            diff_rate = diff_eac / max(eac_a, eac_b) * 100 if max(eac_a, eac_b) > 0 else 0
 
             st.markdown(f"""<div style="background-color:#F8F9FA; border:2px solid #1E90FF; border-radius:16px; padding:22px; margin-top:15px; margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.08);">
 <h3 style="margin-top:0; color:#1E90FF;">1vs1 경제성 비교 결과</h3>
 <p style="color:#555; margin-bottom:0;">
-NPV(순현재가치) 기반으로 보증금, 월세, 관리비, 통학시간 비용을 현재가치로 환산한 실질 총비용 비교입니다.<br>
+NPV(순현재가치)로 총비용을 계산한 뒤, 이를 EAC(등가월비용)으로 환산하여 매월 체감되는 실질 부담액을 비교했습니다.<br>
 적용 연 할인율: <b>{annual_discount_rate_percent:.1f}%</b> /
 월 할인율: <b>{cost_a["월 할인율"] * 100:.4f}%</b>
 </p>
@@ -866,17 +884,18 @@ NPV(순현재가치) 기반으로 보증금, 월세, 관리비, 통학시간 비
 
             summary_col1, summary_col2, summary_col3 = st.columns(3)
             with summary_col1:
-                st.metric("매물 A NPV 비용", format_won(total_a))
+                st.metric("매물 A 등가월비용", format_won(eac_a))
             with summary_col2:
-                st.metric("매물 B NPV 비용", format_won(total_b))
+                st.metric("매물 B 등가월비용", format_won(eac_b))
             with summary_col3:
-                st.metric("NPV 비용 차이", format_won(diff), f"{diff_rate:.1f}%")
+                st.metric("월 부담 차이", format_won(diff_eac), f"{diff_rate:.1f}%")
 
             result_compare = pd.DataFrame({
                 "항목": [
                     "주소", "평수", "보증금", "월세", "관리비", "통학시간",
-                    "보증금 현재가치", "월세 현재가치", "관리비 현재가치",
-                    "통학시간 현재가치", "총 현재가치 비용(NPV)"
+                    "월 통학시간 비용", "보증금 현재가치", "월세 현재가치",
+                    "관리비 현재가치", "통학시간 현재가치",
+                    "총 현재가치 비용(NPV)", "등가월비용(EAC)"
                 ],
                 "매물 A": [
                     row_a["주소"],
@@ -885,11 +904,13 @@ NPV(순현재가치) 기반으로 보증금, 월세, 관리비, 통학시간 비
                     format_won(row_a["월세"]),
                     format_won(row_a["관리비"]),
                     f"{int(row_a['총_시간(분)'])}분" if pd.notna(row_a["총_시간(분)"]) else "-",
+                    format_won(cost_a["월 통학시간 비용"]),
                     format_won(cost_a["보증금 현재가치"]),
                     format_won(cost_a["월세 현재가치"]),
                     format_won(cost_a["관리비 현재가치"]),
                     format_won(cost_a["통학시간 현재가치"]),
-                    format_won(cost_a["총 현재가치 비용(NPV)"])
+                    format_won(cost_a["총 현재가치 비용(NPV)"]),
+                    format_won(cost_a["등가월비용(EAC)"])
                 ],
                 "매물 B": [
                     row_b["주소"],
@@ -898,11 +919,13 @@ NPV(순현재가치) 기반으로 보증금, 월세, 관리비, 통학시간 비
                     format_won(row_b["월세"]),
                     format_won(row_b["관리비"]),
                     f"{int(row_b['총_시간(분)'])}분" if pd.notna(row_b["총_시간(분)"]) else "-",
+                    format_won(cost_b["월 통학시간 비용"]),
                     format_won(cost_b["보증금 현재가치"]),
                     format_won(cost_b["월세 현재가치"]),
                     format_won(cost_b["관리비 현재가치"]),
                     format_won(cost_b["통학시간 현재가치"]),
-                    format_won(cost_b["총 현재가치 비용(NPV)"])
+                    format_won(cost_b["총 현재가치 비용(NPV)"]),
+                    format_won(cost_b["등가월비용(EAC)"])
                 ]
             })
 
@@ -910,13 +933,13 @@ NPV(순현재가치) 기반으로 보증금, 월세, 관리비, 통학시간 비
 
             st.success(
                 f"추천 결과: 매물 {winner}가 더 경제적입니다. "
-                f"매물 {loser}보다 NPV 기반 실질 총비용이 약 {format_won(diff)} 낮고, "
-                f"비율로는 약 {diff_rate:.1f}% 차이입니다."
+                f"매물 {loser}보다 등가월비용이 약 {format_won(diff_eac)} 낮고, "
+                f"총 현재가치 비용 기준으로는 약 {format_won(diff_npv)} 차이입니다."
             )
 
             st.info(
-                f"해석: '{winner_row['주소']}' 매물은 월세, 보증금, 관리비, 통학시간 비용의 현재가치를 모두 반영했을 때 "
-                f"'{loser_row['주소']}' 매물보다 경제성이 더 높습니다."
+                f"해석: '{winner_row['주소']}' 매물은 보증금, 월세, 관리비, 통학시간 비용을 현재가치로 환산한 뒤 "
+                f"월 단위 비용으로 다시 바꿨을 때 '{loser_row['주소']}'보다 매월 체감 부담이 낮습니다."
             )
 
         st.divider()
@@ -986,13 +1009,11 @@ elif st.session_state.current_page == "trend":
         top_price = past_df['가격대'].mode()[0] if not past_df['가격대'].empty else "-"
         top_size = past_df['평수_그룹'].mode()[0] if not past_df['평수_그룹'].empty else "-"
 
-
         def metric_card(title, value):
             return f"""<div style="background-color: #F8F9FA; border-left: 4px solid #1E90FF; padding: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px;">
 <div style="color: #666; font-size: 13px; margin-bottom: 5px;">{title}</div>
 <div style="color: #333; font-size: 20px; font-weight: bold;">{value}</div>
 </div>"""
-
 
         m1.markdown(metric_card("분석 데이터 수", f"{total_count}건"), unsafe_allow_html=True)
         m2.markdown(metric_card("가장 인기있는 지역", top_dong), unsafe_allow_html=True)
