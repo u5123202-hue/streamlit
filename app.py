@@ -269,7 +269,7 @@ if "selected_directions" not in st.session_state:
     available_directions_init = [
         d for d in df['향'].dropna().unique()
         if str(d).strip() != '' and str(d).strip().lower() != 'nan'
-    ]
+    ]sid
     st.session_state.selected_directions = available_directions_init
 
 if "w_price" not in st.session_state:
@@ -434,6 +434,15 @@ if st.session_state.current_page == "main":
         - 15 : 10~20평
         """
         )
+
+    /* 슬라이더 파란색 */
+.stSlider > div > div > div > div { background-color: #1E90FF !important; }
+
+/* multiselect 파란색 */
+div[data-baseweb="select"] span[data-baseweb="tag"] { background-color: #1E90FF !important; }
+
+/* 버튼 hover 파란색 */
+button[kind="tertiary"]:hover { color: #1E90FF !important; }
 
     with st.sidebar.expander("필수 옵션 선택", expanded=False):
         st.write("선택한 옵션이 모두 있는 매물만 보여줍니다.")
