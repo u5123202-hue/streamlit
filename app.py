@@ -11,7 +11,6 @@ st.cache_data.clear()
 # --- 1. 페이지 설정 ---
 st.set_page_config(page_title="ROOMINU", layout="wide")
 
-# --- CSS 스타일 적용 (파란색 테마) ---
 st.markdown("""
 <style>
 /* multiselect 파란색 스타일 */
@@ -25,7 +24,6 @@ div[data-baseweb="select"] span[data-baseweb="tag"] {
 div[data-baseweb="select"] span[data-baseweb="tag"] svg {
     fill: white !important;
 }
-
 /* slider 파란색 스타일 */
 .stSlider > div > div > div > div {
     background-color: #1E90FF !important;
@@ -39,22 +37,6 @@ div[role="slider"] {
 div[data-baseweb="slider"] > div > div > div {
     background-color: #1E90FF !important;
 }
-
-/* tertiary 버튼 스타일 (삭제 버튼) */
-button[kind="tertiary"] {
-    text-decoration: underline !important;
-    font-size: 13px !important;
-    color: #888888 !important;
-    padding-top: 5px !important;
-    background: none !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-button[kind="tertiary"]:hover {
-    color: #1E90FF !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
 # --- KAKAO MAP API KEY 설정 ---
 KAKAO_API_KEY = "853a71f8261b3dccfd8c6b6e1879d3c4"
@@ -381,15 +363,22 @@ def calculate_total_cost(
     if pd.isna(commute_min):
         commute_min = 0
 
+    # 연 할인율을 월 할인율로 변환
     monthly_rate = (1 + annual_rate) ** (1 / 12) - 1
+
+    # 월 통학시간 비용 계산
     monthly_commute_hours = (commute_min / 60) * commute_days_per_month
     monthly_commute_cost = monthly_commute_hours * 5160
 
+    # 월세, 관리비, 통학시간 비용의 현재가치 계산
     if monthly_rate > 0:
         pv_factor = (1 - (1 + monthly_rate) ** (-months)) / monthly_rate
+
         pv_rent = monthly_rent * pv_factor
         pv_maintenance = maintenance * pv_factor
         pv_commute = monthly_commute_cost * pv_factor
+
+        # NPV를 등가월비용(EAC)으로 환산하는 자본회수계수
         eac_factor = (monthly_rate * (1 + monthly_rate) ** months) / (
                 (1 + monthly_rate) ** months - 1
         )
@@ -399,8 +388,13 @@ def calculate_total_cost(
         pv_commute = monthly_commute_cost * months
         eac_factor = 1 / months
 
+    # 보증금은 처음에 맡기고, 거주 종료 시점에 돌려받는다고 가정
+    # 현재 시점 보증금 지출액 - 미래 반환액의 현재가치
     pv_deposit = deposit - (deposit / ((1 + monthly_rate) ** months))
+
     total_npv_cost = pv_deposit + pv_rent + pv_maintenance + pv_commute
+
+    # 등가월비용: 총 현재가치 비용을 매월 동일하게 부담하는 금액으로 환산
     eac_monthly_cost = total_npv_cost * eac_factor
 
     return {
@@ -518,6 +512,21 @@ if st.session_state.current_page == "main":
         st.rerun()
 
     if st.session_state.presets:
+        st.markdown("""<style>
+button[kind="tertiary"] {
+    text-decoration: underline !important;
+    font-size: 13px !important;
+    color: #888888 !important;
+    padding-top: 5px !important;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+button[kind="tertiary"]:hover {
+    color: #ff4b4b !important;
+}
+</style>""", unsafe_allow_html=True)
+
         with st.sidebar.expander("저장된 필터 목록 열기", expanded=False):
             for preset_name in list(st.session_state.presets.keys()):
                 col1, col2 = st.columns([4, 1])
@@ -547,6 +556,7 @@ if st.session_state.current_page == "main":
     if not size_any:
         min_size = max(0, desired_size - 5)
         max_size = desired_size + 5
+
         filtered_df = filtered_df[
             (filtered_df['평수'] >= min_size) &
             (filtered_df['평수'] <= max_size)
@@ -607,7 +617,7 @@ if st.session_state.current_page == "main":
         for _, row in data.iterrows():
             extra_tag = ""
             if pd.notna(row.get("추천태그", "")) and str(row.get("추천태그", "")).strip() != "":
-                extra_tag = f"<br><span style='color:#1E90FF;font-weight:bold;'>{row['추천태그']}</span>"
+                extra_tag = f"<br><span style='color:#ff6600;font-weight:bold;'>{row['추천태그']}</span>"
 
             total_time_text = "-"
             if pd.notna(row.get('총_시간(분)', np.nan)):
@@ -636,45 +646,45 @@ if st.session_state.current_page == "main":
 <div id="map" style="width:100%;height:500px;border-radius:10px;background-color:#eee;"></div>
 <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey={KAKAO_API_KEY}&libraries=services,clusterer&autoload=false"></script>
 <script>
-(function() {{{{
-var checkInterval = setInterval(function() {{{{
-if (window.kakao && window.kakao.maps && window.kakao.maps.load) {{{{
+(function() {{
+var checkInterval = setInterval(function() {{
+if (window.kakao && window.kakao.maps && window.kakao.maps.load) {{
 clearInterval(checkInterval);
-window.kakao.maps.load(function() {{{{
+window.kakao.maps.load(function() {{
 var container = document.getElementById('map');
-var options = {{{{
+var options = {{
 center: new kakao.maps.LatLng({center_lat}, {center_lng}),
 level: 6
-}}}};
+}};
 var map = new kakao.maps.Map(container, options);
-var clusterer = new kakao.maps.MarkerClusterer({{{{
+var clusterer = new kakao.maps.MarkerClusterer({{
 map: map,
 averageCenter: true,
 minLevel: 2,
 gridSize: 35,
 disableClickZoom: false
-}}}});
+}});
 var positions = {markers_json};
 var markers = [];
-positions.forEach(function(pos) {{{{
-var marker = new kakao.maps.Marker({{{{
+positions.forEach(function(pos) {{
+var marker = new kakao.maps.Marker({{
 position: new kakao.maps.LatLng(pos.lat, pos.lng)
-}}}});
-var infowindow = new kakao.maps.InfoWindow({{{{
+}});
+var infowindow = new kakao.maps.InfoWindow({{
 content: pos.content
-}}}});
-kakao.maps.event.addListener(marker, 'mouseover', function() {{{{
+}});
+kakao.maps.event.addListener(marker, 'mouseover', function() {{
 infowindow.open(map, marker);
-}}}});
-kakao.maps.event.addListener(marker, 'mouseout', function() {{{{
+}});
+kakao.maps.event.addListener(marker, 'mouseout', function() {{
 infowindow.close();
-}}}});
+}});
 markers.push(marker);
-}}}});
+}});
 clusterer.addMarkers(markers);
-}}}});
-}}}}
-}}}}, 100);
+}});
+}}
+}}, 100);
 }})();
 </script>
         """
@@ -717,6 +727,13 @@ clusterer.addMarkers(markers);
             st.slider("크기 중요도", 1, 5, key="w_size")
             st.slider("통학 중요도", 1, 5, key="w_commute")
 
+            total_weight_now = (
+                    st.session_state.w_price +
+                    st.session_state.w_option +
+                    st.session_state.w_size +
+                    st.session_state.w_commute
+            )
+
         st.divider()
         st.subheader("맞춤형 추천 매물 TOP 3")
 
@@ -730,14 +747,14 @@ clusterer.addMarkers(markers);
 
                 tag_html = ""
                 if pd.notna(row['추천태그']) and str(row['추천태그']).strip() != "":
-                    tag_html = f"""<div style="background-color:#E3F2FD; color:#1565C0; border-radius:8px; padding:8px 10px; font-size:13px; font-weight:bold; margin-bottom:12px; text-align:center;">{row['추천태그']}</div>"""
+                    tag_html = f"""<div style="background-color:#FFF3CD; color:#856404; border-radius:8px; padding:8px 10px; font-size:13px; font-weight:bold; margin-bottom:12px; text-align:center;">{row['추천태그']}</div>"""
 
                 total_time_text = "-"
                 if pd.notna(row.get('총_시간(분)', np.nan)):
                     total_time_text = f"{int(row['총_시간(분)'])}분"
 
-                card_html = f"""<div style="background-color: #FFFFFF; border: 1px solid #E6E6E6; border-top: 4px solid #1E90FF; border-radius: 15px; padding: 20px; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.05); margin-bottom: 10px; font-family: Arial, sans-serif; box-sizing: border-box;">
-<div style="color: #1E90FF; font-size: 14px; font-weight: bold; margin-bottom: 8px;">{i + 1}위 추천</div>
+                card_html = f"""<div style="background-color: #FFFFFF; border: 1px solid #E6E6E6; border-top: 4px solid #FFC107; border-radius: 15px; padding: 20px; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.05); margin-bottom: 10px; font-family: Arial, sans-serif; box-sizing: border-box;">
+<div style="color: #FFC107; font-size: 14px; font-weight: bold; margin-bottom: 8px;">{i + 1}위 추천</div>
 <div style="color: {score_color}; font-size: 32px; font-weight: 900; margin-bottom: 15px;">{row['최종점수']} <span style="font-size: 16px; font-weight: normal; color: #888;">/ 10점</span></div>
 {tag_html}
 <div style="background-color: #F0F2F6; border-radius: 10px; padding: 12px; margin-bottom: 15px;">
@@ -774,17 +791,29 @@ clusterer.addMarkers(markers);
 
         with st.expander("비교 조건 설정", expanded=False):
             col_a, col_b, col_c = st.columns(3)
+
             with col_a:
                 compare_months = st.number_input("희망 거주기간(개월)", min_value=1, max_value=60, value=12)
+
             with col_b:
                 commute_days = st.number_input("월 통학일수", min_value=1, max_value=31, value=20)
+
             with col_c:
-                annual_discount_rate_percent = st.number_input("연 할인율(%)", min_value=0.0, max_value=20.0, value=3.0, step=0.1)
+                annual_discount_rate_percent = st.number_input(
+                    "연 할인율(%)",
+                    min_value=0.0,
+                    max_value=20.0,
+                    value=3.0,
+                    step=0.1
+                )
+
             annual_discount_rate = annual_discount_rate_percent / 100
 
-        display_cols = ['선택', '최종점수', '주소', '종류', '평수', '보증금', '월세', '관리비',
-                        '총_시간(분)', '통학점수', '월세_관리비_합', '예산초과금액',
-                        '가격점수', '시설점수', '크기점수']
+        display_cols = [
+            '선택', '최종점수', '주소', '종류', '평수', '보증금', '월세', '관리비',
+            '총_시간(분)', '통학점수', '월세_관리비_합', '예산초과금액',
+            '가격점수', '시설점수', '크기점수'
+        ]
 
         compare_table_df = result_df.copy()
         compare_table_df.insert(0, '선택', False)
@@ -793,12 +822,18 @@ clusterer.addMarkers(markers);
         display_df = compare_table_df[existing_display_cols].copy()
 
         if '총_시간(분)' in display_df.columns:
-            display_df['총_시간(분)'] = display_df['총_시간(분)'].apply(lambda x: f"{int(x)}분" if pd.notna(x) else "-")
+            display_df['총_시간(분)'] = display_df['총_시간(분)'].apply(
+                lambda x: f"{int(x)}분" if pd.notna(x) else "-"
+            )
 
         edited_df = st.data_editor(
             display_df,
             column_config={
-                "선택": st.column_config.CheckboxColumn("비교 선택", help="비교할 매물 2개만 선택하세요.", default=False),
+                "선택": st.column_config.CheckboxColumn(
+                    "비교 선택",
+                    help="비교할 매물 2개만 선택하세요.",
+                    default=False
+                ),
                 "최종점수": st.column_config.NumberColumn("총 점수", format="%.1f"),
                 "총_시간(분)": "학교까지시간",
                 "월세_관리비_합": st.column_config.NumberColumn("월세+관리비", format="%d"),
@@ -819,6 +854,7 @@ clusterer.addMarkers(markers);
         )
 
         selected_rows = edited_df[edited_df['선택'] == True]
+
         selected_count = len(selected_rows)
         st.caption(f"현재 선택된 매물: {selected_count}개 / 2개")
 
@@ -830,8 +866,19 @@ clusterer.addMarkers(markers);
             row_a = result_df.loc[selected_indices[0]]
             row_b = result_df.loc[selected_indices[1]]
 
-            cost_a = calculate_total_cost(row_a, months=compare_months, commute_days_per_month=commute_days, annual_rate=annual_discount_rate)
-            cost_b = calculate_total_cost(row_b, months=compare_months, commute_days_per_month=commute_days, annual_rate=annual_discount_rate)
+            cost_a = calculate_total_cost(
+                row_a,
+                months=compare_months,
+                commute_days_per_month=commute_days,
+                annual_rate=annual_discount_rate
+            )
+
+            cost_b = calculate_total_cost(
+                row_b,
+                months=compare_months,
+                commute_days_per_month=commute_days,
+                annual_rate=annual_discount_rate
+            )
 
             eac_a = cost_a["등가월비용(EAC)"]
             eac_b = cost_b["등가월비용(EAC)"]
@@ -839,9 +886,15 @@ clusterer.addMarkers(markers);
             npv_b = cost_b["총 현재가치 비용(NPV)"]
 
             if eac_a < eac_b:
-                winner, loser, winner_row, loser_row = "A", "B", row_a, row_b
+                winner = "A"
+                loser = "B"
+                winner_row = row_a
+                loser_row = row_b
             else:
-                winner, loser, winner_row, loser_row = "B", "A", row_b, row_a
+                winner = "B"
+                loser = "A"
+                winner_row = row_b
+                loser_row = row_a
 
             diff_eac = abs(eac_a - eac_b)
             diff_npv = abs(npv_a - npv_b)
@@ -865,36 +918,56 @@ NPV(순현재가치)로 총비용을 계산한 뒤, 이를 EAC(등가월비용)�
                 st.metric("월 부담 차이", format_won(diff_eac), f"{diff_rate:.1f}%")
 
             result_compare = pd.DataFrame({
-                "항목": ["주소", "평수", "보증금", "월세", "관리비", "통학시간",
-                         "월 통학시간 비용", "보증금 현재가치", "월세 현재가치",
-                         "관리비 현재가치", "통학시간 현재가치",
-                         "총 현재가치 비용(NPV)", "등가월비용(EAC)"],
+                "항목": [
+                    "주소", "평수", "보증금", "월세", "관리비", "통학시간",
+                    "월 통학시간 비용", "보증금 현재가치", "월세 현재가치",
+                    "관리비 현재가치", "통학시간 현재가치",
+                    "총 현재가치 비용(NPV)", "등가월비용(EAC)"
+                ],
                 "매물 A": [
-                    row_a["주소"], f"{row_a['평수']}평", format_won(row_a["보증금"]), format_won(row_a["월세"]),
-                    format_won(row_a["관리비"]), f"{int(row_a['총_시간(분)'])}분" if pd.notna(row_a["총_시간(분)"]) else "-",
-                    format_won(cost_a["월 통학시간 비용"]), format_won(cost_a["보증금 현재가치"]),
-                    format_won(cost_a["월세 현재가치"]), format_won(cost_a["관리비 현재가치"]),
-                    format_won(cost_a["통학시간 현재가치"]), format_won(cost_a["총 현재가치 비용(NPV)"]),
+                    row_a["주소"],
+                    f"{row_a['평수']}평",
+                    format_won(row_a["보증금"]),
+                    format_won(row_a["월세"]),
+                    format_won(row_a["관리비"]),
+                    f"{int(row_a['총_시간(분)'])}분" if pd.notna(row_a["총_시간(분)"]) else "-",
+                    format_won(cost_a["월 통학시간 비용"]),
+                    format_won(cost_a["보증금 현재가치"]),
+                    format_won(cost_a["월세 현재가치"]),
+                    format_won(cost_a["관리비 현재가치"]),
+                    format_won(cost_a["통학시간 현재가치"]),
+                    format_won(cost_a["총 현재가치 비용(NPV)"]),
                     format_won(cost_a["등가월비용(EAC)"])
                 ],
                 "매물 B": [
-                    row_b["주소"], f"{row_b['평수']}평", format_won(row_b["보증금"]), format_won(row_b["월세"]),
-                    format_won(row_b["관리비"]), f"{int(row_b['총_시간(분)'])}분" if pd.notna(row_b["총_시간(분)"]) else "-",
-                    format_won(cost_b["월 통학시간 비용"]), format_won(cost_b["보증금 현재가치"]),
-                    format_won(cost_b["월세 현재가치"]), format_won(cost_b["관리비 현재가치"]),
-                    format_won(cost_b["통학시간 현재가치"]), format_won(cost_b["총 현재가치 비용(NPV)"]),
+                    row_b["주소"],
+                    f"{row_b['평수']}평",
+                    format_won(row_b["보증금"]),
+                    format_won(row_b["월세"]),
+                    format_won(row_b["관리비"]),
+                    f"{int(row_b['총_시간(분)'])}분" if pd.notna(row_b["총_시간(분)"]) else "-",
+                    format_won(cost_b["월 통학시간 비용"]),
+                    format_won(cost_b["보증금 현재가치"]),
+                    format_won(cost_b["월세 현재가치"]),
+                    format_won(cost_b["관리비 현재가치"]),
+                    format_won(cost_b["통학시간 현재가치"]),
+                    format_won(cost_b["총 현재가치 비용(NPV)"]),
                     format_won(cost_b["등가월비용(EAC)"])
                 ]
             })
 
             st.dataframe(result_compare, hide_index=True, use_container_width=True)
 
-            st.success(f"추천 결과: 매물 {winner}가 더 경제적입니다. "
-                      f"매물 {loser}보다 등가월비용이 약 {format_won(diff_eac)} 낮고, "
-                      f"총 현재가치 비용 기준으로는 약 {format_won(diff_npv)} 차이입니다.")
+            st.success(
+                f"추천 결과: 매물 {winner}가 더 경제적입니다. "
+                f"매물 {loser}보다 등가월비용이 약 {format_won(diff_eac)} 낮고, "
+                f"총 현재가치 비용 기준으로는 약 {format_won(diff_npv)} 차이입니다."
+            )
 
-            st.info(f"해석: '{winner_row['주소']}' 매물은 보증금, 월세, 관리비, 통학시간 비용을 현재가치로 환산한 뒤 "
-                   f"월 단위 비용으로 다시 바꿨을 때 '{loser_row['주소']}'보다 매월 체감 부담이 낮습니다.")
+            st.info(
+                f"해석: '{winner_row['주소']}' 매물은 보증금, 월세, 관리비, 통학시간 비용을 현재가치로 환산한 뒤 "
+                f"월 단위 비용으로 다시 바꿨을 때 '{loser_row['주소']}'보다 매월 체감 부담이 낮습니다."
+            )
 
         st.divider()
 
@@ -908,7 +981,8 @@ NPV(순현재가치)로 총비용을 계산한 뒤, 이를 EAC(등가월비용)�
     area_cols = st.columns(6)
 
     for i, area in enumerate(target_areas):
-        area_best = result_df[result_df['주소'].str.contains(area, na=False)].head(1) if not result_df.empty else pd.DataFrame()
+        area_best = result_df[result_df['주소'].str.contains(area, na=False)].head(
+            1) if not result_df.empty else pd.DataFrame()
 
         with area_cols[i]:
             if not area_best.empty:
