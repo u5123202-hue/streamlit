@@ -11,33 +11,6 @@ st.cache_data.clear()
 # --- 1. 페이지 설정 ---
 st.set_page_config(page_title="ROOMINU", layout="wide")
 
-st.markdown("""
-<style>
-/* multiselect 파란색 스타일 */
-div[data-baseweb="select"] > div {
-    border-color: #1E90FF !important;
-}
-div[data-baseweb="select"] span[data-baseweb="tag"] {
-    background-color: #1E90FF !important;
-    color: white !important;
-}
-div[data-baseweb="select"] span[data-baseweb="tag"] svg {
-    fill: white !important;
-}
-/* slider 파란색 스타일 */
-.stSlider > div > div > div > div {
-    background-color: #1E90FF !important;
-}
-.stSlider > div > div > div > div > div {
-    background-color: #1E90FF !important;
-}
-div[role="slider"] {
-    background-color: #1E90FF !important;
-}
-div[data-baseweb="slider"] > div > div > div {
-    background-color: #1E90FF !important;
-}
-
 # --- KAKAO MAP API KEY 설정 ---
 KAKAO_API_KEY = "853a71f8261b3dccfd8c6b6e1879d3c4"
 
